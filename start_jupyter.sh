@@ -1,0 +1,1 @@
+docker run --user root --gpus all -p 8888:8888 -v ${pwd}/code:/home/jovyan/work -e NB_UID=1008 -e NB_GID=1008 -e CHOWN_HOME=yes -e CHOWN_HOME_OPTS='-R' active-sampling

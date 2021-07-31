@@ -1,0 +1,6 @@
+matplotlib
+ipywidgets
+seaborn
+more-itertools
+pydantic
+click
