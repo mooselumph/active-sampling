@@ -4,3 +4,5 @@ seaborn
 more-itertools
 pydantic
 click
+scikit-learn
+einops
