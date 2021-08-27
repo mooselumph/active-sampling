@@ -3,6 +3,9 @@ import jax
 import jax.numpy as jnp
 import flax.linen as nn
 
+from einops import rearrange
+
+from typing import Tuple
 
 import numpy as np
 
@@ -11,7 +14,7 @@ from .utils import ConvZeros
 # Channel reshaping
 
 # TODO: Update to use jax.lax.conv. Compare with einops equiv for speed.
-class Squeeze(nn.Module):
+class ConvSqueeze(nn.Module):
 
     channels: int
 
@@ -29,17 +32,25 @@ class Squeeze(nn.Module):
         self.conv_layer = nn.Conv(features= 4,kernel_size=[2,2], strides=2,feature_group_count=self.channels,use_bias=False)
         self.conv_tpose_layer = nn.ConvTranspose(features= 4,kernel_size=[2,2], strides=2,feature_group_count=self.channels,use_bias=False)
 
-    def forward(self,x):
+    def __call__(self, x, logdet=0, reverse=False):
 
-        params = {'kernel': self.downsample_kernel}
-        x = self.conv_layer.apply(params,x)
-        return x
+        if reverse:
+            params = {'kernel': self.downsample_kernel}
+            x = self.conv_layer.apply(params,x)
+        else:
+            params = {'kernel': self.downsample_kernel}
+            x = self.conv_layer.apply(params,x)
+            x = self.conv_tpose_layer.apply(params,x)
+        
+        return x, logdet
 
-    def reverse(self,x):
-        params = {'kernel': self.downsample_kernel}
-        x = self.conv_layer.apply(params,x)
-        x = self.conv_tpose_layer.apply(params,x)
 
+class Squeeze(nn.Module):
+    @nn.compact
+    def __call__(x,logdet=0, reverse=False):
+        x = unsqueeze(x) if reverse else squeeze(x)
+        return x, logdet
+        
 
 def squeeze(x):
     x = jnp.reshape(x, (x.shape[0], 
@@ -60,6 +71,21 @@ def unsqueeze(x):
                         x.shape[5]))
     return x
 
+
+# Flattening
+
+class Flatten(nn.Module):
+
+    shape: Tuple[int,int,int]
+
+    def __call__(self, x, logdet=0, reverse=False):
+
+        if reverse:
+            x = rearrange(x,'b (h w c) -> b h w c',h=self.shape[0],w=self.shape[1],c=self.shape[2])
+        else:
+            x = rearrange(x,'b h w c -> b (h w c)')
+
+        return x, logdet
 
 # Multiscale
 

@@ -2,6 +2,8 @@ import jax
 import jax.numpy as jnp
 import flax.linen as nn
 
+from typing import Callable, List
+
 import operator
 from functools import partial, reduce
 
@@ -56,7 +58,6 @@ class ActNorm(nn.Module):
         return y, logdet
 
 
-
 class InvertibleConv1x1(nn.Module):
     channels: int
     key: jax.random.PRNGKey = jax.random.PRNGKey(0)
@@ -84,7 +85,6 @@ class InvertibleConv1x1(nn.Module):
         self.L = self.param("L", lambda k, sh: L_init, (c, c))
         self.U = self.param("U", lambda k, sh: U_init, (c, c))
         self.log_s = self.param("log_s", lambda k, sh: S_log_init, (c,))
-        
         
     def __call__(self, inputs, logdet=0, reverse=False):
         c = self.channels
@@ -116,26 +116,21 @@ class InvertibleConv1x1(nn.Module):
         return y, logdet
 
 
-
-
 class AffineCoupling(nn.Module):
+
+    subnet: Callable[[int],nn.Module] 
     out_dims: int
-    width: int = 512
+
     eps: float = 1e-8
+    identity_init: bool = True
     
     @nn.compact
     def __call__(self, inputs, logdet=0, reverse=False):
         # Split
         xa, xb = jnp.split(inputs, 2, axis=-1)
+
+        net = self.subnet(out_dims=self.out_dims)(xb)
         
-        # NN
-        net = nn.Conv(features=self.width, kernel_size=(3, 3), strides=(1, 1),
-                      padding='same', name="ACL_conv_1")(xb)
-        net = nn.relu(net)
-        net = nn.Conv(features=self.width, kernel_size=(1, 1), strides=(1, 1),
-                      padding='same', name="ACL_conv_2")(net)
-        net = nn.relu(net)
-        net = ConvZeros(self.out_dims, name="ACL_conv_out")(net)
         mu, logsigma = jnp.split(net, 2, axis=-1)
 
         # See https://github.com/openai/glow/blob/master/model.py#L376
@@ -154,7 +149,35 @@ class AffineCoupling(nn.Module):
         return y, logdet
 
 
+# Blocks
+
+class FlowStep(nn.Module):
+
+    subnet: Callable[[int],nn.Module] 
+    key: jax.random.PRNGKey = jax.random.PRNGKey(0)
+        
+    @nn.compact
+    def __call__(self, x, logdet=0, reverse=False):
+        out_dims = x.shape[-1]
+        if not reverse:
+            x, logdet = ActNorm()(x, logdet=logdet, reverse=False)
+            x, logdet = InvertibleConv1x1(out_dims, self.key)(x, logdet=logdet, reverse=False)
+            x, logdet = AffineCoupling(out_dims, self.subnet)(x, logdet=logdet, reverse=False)
+        else:
+            x, logdet = AffineCoupling(out_dims, self.subnet)(x, logdet=logdet, reverse=True)
+            x, logdet = InvertibleConv1x1(out_dims, self.key)(x, logdet=logdet, reverse=True)
+            x, logdet = ActNorm()(x, logdet=logdet, reverse=True)
+        return x, logdet
+
 
 class Sequential(nn.Module):
 
-    pass
+    modules: List[nn.Module]
+
+    @nn.compact
+    def __call__(self,x,reverse=False,logdet=0):
+
+        for module in self.modules[::(-1 if reverse else 1)]:
+            x, logdet = module(x,logdet=logdet, reverse=reverse)
+
+        return x, logdet
