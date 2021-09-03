@@ -1,3 +1,5 @@
 weights
 samples
 *.pyc
+results
+outputs

@@ -6,3 +6,5 @@ pydantic
 click
 scikit-learn
 einops
+optuna
+hydra-core

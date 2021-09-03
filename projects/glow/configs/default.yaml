@@ -1,0 +1,44 @@
+hydra:
+  run:
+    dir: outputs/${run.name}/${run.tags}/${hydra.job.override_dirname}
+  sweep:    
+    dir: multirun/${run.name}/
+    subdir: ${hydra.job.override_dirname}
+  job:    
+    config:
+      override_dirname:
+        exclude_keys:          
+          - run.name
+          - run.tags
+
+run:
+  name: 'stickmanf'
+  tags: '${now:%Y-%m-%d_%H-%M-%S}'
+
+model:
+  checkpoint_path: ''
+  sampling_temperature: 0.7
+  params:
+    K: 5
+    L: 3
+    nn_width: 64
+    learn_top_prior: True
+
+data:
+  image_path: "../../datasets/stickman/f"
+  ext: 'png'
+  image_size: 32
+  num_channels: 1
+  train_split: 0.6
+  num_bits: 5
+
+train:
+  num_epochs: 13
+  batch_size: 64
+  num_warmup_epochs: 1
+  num_sample_epochs: 0.2 # Fractional epochs for sampling because one epoch is quite long 
+  num_save_epochs: 5
+  num_samples: 9
+
+optim:
+  init_lr: 0.001

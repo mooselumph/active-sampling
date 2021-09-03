@@ -1,0 +1,12 @@
+setup.py
+jax_flows/__init__.py
+jax_flows/affine.py
+jax_flows/blocks.py
+jax_flows/permutations.py
+jax_flows/reshaping.py
+jax_flows/subnets.py
+jax_flows/utils.py
+jax_flows.egg-info/PKG-INFO
+jax_flows.egg-info/SOURCES.txt
+jax_flows.egg-info/dependency_links.txt
+jax_flows.egg-info/top_level.txt

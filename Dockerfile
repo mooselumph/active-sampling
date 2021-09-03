@@ -12,11 +12,9 @@ RUN python -m pip install \
      jax \
      jaxlib==0.1.69+cuda101 -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
-COPY core.txt .
-COPY requirements.txt .
+RUN python -m pip install flax
 
-# Separate core requirements so that this layer can be cached.
-RUN python -m pip  --no-cache-dir install -r core.txt
+COPY requirements.txt .
 RUN python -m pip --no-cache-dir install -r requirements.txt
 
 USER $NB_USER
