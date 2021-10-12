@@ -38,6 +38,7 @@ class MlpSubnet(nn.Module):
 
     out_dims: int
     width: int = 392
+    depth: int = 2
     identity_init: bool = True
 
     def setup(self):
@@ -52,10 +53,9 @@ class MlpSubnet(nn.Module):
     @nn.compact
     def __call__(self, x):
 
-        x = nn.Dense(features=self.width, name="ACL_dense_1")(x)
-        x = nn.relu(x)
-        x = nn.Dense(features=self.width, name="ACL_dense_2")(x)
-        x = nn.relu(x)
-        x = nn.Dense(features=self.out_dims, name="ACL_dense_out", **self.final_layer_init)(x)
+        for _ in range(self.depth):
+            x = nn.Dense(features=self.width)(x)
+            x = nn.relu(x)
+        x = nn.Dense(features=self.out_dims, **self.final_layer_init)(x)
 
         return x

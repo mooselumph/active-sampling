@@ -18,11 +18,6 @@ run:
 model:
   checkpoint_path: ''
 
-prior: 
-  type: 'Normal'
-  params:
-    temperature: 0.7
-
 bijection: 
   type: 'vanilla'
   params:
@@ -32,14 +27,15 @@ bijection:
     num_mlp_layers: 2
   
 data:
-  image_path: "../../datasets/stickman/f"
+  image_path: "../../datasets/stickman/g"
   ext: 'png'
   image_size: 32
   num_channels: 1
-  train_split: 0.6
+  train_split: 0.1
   num_bits: 5
 
 train:
+  sigma_output: 0.1
   num_epochs: 100
   batch_size: 64
   num_warmup_epochs: 1
@@ -48,4 +44,4 @@ train:
   num_samples: 9
 
 optim:
-  init_lr: 0.001
+  init_lr: 0.0001

@@ -2,7 +2,9 @@ setup.py
 jax_flows/__init__.py
 jax_flows/affine.py
 jax_flows/blocks.py
+jax_flows/flow.py
 jax_flows/permutations.py
+jax_flows/priors.py
 jax_flows/reshaping.py
 jax_flows/subnets.py
 jax_flows/utils.py

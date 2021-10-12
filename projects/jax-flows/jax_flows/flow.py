@@ -13,12 +13,14 @@ class Flow(nn.Module):
     key: jax.random.PRNGKey = jax.random.PRNGKey(0)
 
     @nn.compact
-    def __call__(self, x=None, reverse=False,**kwargs):
+    def __call__(self, x=None, z=None, reverse=False,**kwargs):
         
 
         if reverse: 
 
-            z = self.prior(reverse=True,**kwargs)
+            if z is None:
+                z = self.prior(reverse=True,**kwargs)
+            
             x = self.bijection(z,reverse=True)
 
             return x

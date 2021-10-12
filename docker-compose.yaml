@@ -14,5 +14,5 @@ services:
             - NB_GID=1008 
             - CHOWN_HOME=yes
             - CHOWN_HOME_OPTS=-R
-            - NVIDIA_VISIBLE_DEVICES=all
+            - NVIDIA_VISIBLE_DEVICES=2,3
         

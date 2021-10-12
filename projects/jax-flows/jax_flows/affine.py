@@ -113,7 +113,56 @@ class ActNorm(nn.Module):
 class AffineCoupling(nn.Module):
 
     out_dims: int
-    subnet: Callable[[int],nn.Module] 
+    subnet: nn.Module
+    incompressible: bool = True
+
+    eps: float = 1e-8
+    identity_init: bool = True
+
+    clamp: int = 2
+    clamp_type: str = 'atan'
+
+    def setup(self):
+
+        if self.clamp_type == 'atan':
+            self.clamp_fun = lambda u: self.clamp * (0.636 * jnp.arctan(u))
+        elif self.clamp_type == 'glow':
+            self.clamp_fun = lambda u: jnp.log(jax.nn.sigmoid(u + self.clamp))
+        else:
+            raise NotImplementedError
+    
+    @nn.compact
+    def __call__(self, inputs, logdet=0, reverse=False):
+        # Split
+        xa, xb = jnp.array_split(inputs, 2, axis=-1)
+
+        net = self.subnet(xb)
+        
+        mu, preclamp = jnp.array_split(net, 2, axis=-1)
+        logsigma = self.clamp_fun(preclamp)
+
+        if self.incompressible:
+            logsigma -= jnp.mean(logsigma,keepdims=True)
+        
+        sum_dims = tuple(range(1,logsigma.ndim))
+
+        # Merge
+        if not reverse:
+            ya = jnp.exp(logsigma) * xa + mu
+            logdet += 0 if self.incompressible else jnp.sum(logsigma, axis=sum_dims) 
+        else:
+            ya = (xa - mu) * jnp.exp(-logsigma)
+            logdet -= 0 if self.incompressible else jnp.sum(logsigma, axis=sum_dims) 
+            
+        y = jnp.concatenate((ya, xb), axis=-1)
+        return y, logdet
+
+
+
+class AffineCouplingOrig(nn.Module):
+
+    out_dims: int
+    subnet: nn.Module 
 
     eps: float = 1e-8
     identity_init: bool = True
@@ -135,33 +184,25 @@ class AffineCoupling(nn.Module):
         # Split
         xa, xb = jnp.split(inputs, 2, axis=-1)
 
-        net = self.subnet(out_dims=self.out_dims)(xb)
+        net = self.subnet(xb)
         
-        mu, preclamp = jnp.split(net, 2, axis=-1)
+        mu, logsigma = jnp.split(net, 2, axis=-1)
 
         # See https://github.com/openai/glow/blob/master/model.py#L376
         # sigma = jnp.exp(logsigma)
-        # sigma = jax.nn.sigmoid(logsigma + 2.)
+        sigma = jax.nn.sigmoid(logsigma + 2.)
 
-        logsigma = self.clamp_fun(preclamp)
         
-        sum_dims = tuple(range(1,logsigma.ndim))
+        sum_dims = tuple(range(1,sigma.ndim))
 
         # Merge
         if not reverse:
-            # ya = sigma * xa + mu
-            # logdet += jnp.sum(jnp.log(sigma), axis=sum_dims)
+            ya = sigma * xa + mu
+            logdet += jnp.sum(jnp.log(sigma), axis=sum_dims)
 
-            ya = jnp.exp(logsigma) * xa + mu
-            logdet += jnp.sum(logsigma, axis=sum_dims)
         else:
-            # ya = (xa - mu) / (sigma + self.eps)
-            # logdet -= jnp.sum(jnp.log(logsigma), axis=sum_dims)
-
-            ya = (xa - mu) * np.exp(-logsigma)
-            logdet -= jnp.sum(logsigma, axis=sum_dims)
+            ya = (xa - mu) / (sigma + self.eps)
+            logdet -= jnp.sum(jnp.log(logsigma), axis=sum_dims)
             
         y = jnp.concatenate((ya, xb), axis=-1)
         return y, logdet
-
-
