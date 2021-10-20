@@ -1,0 +1,17 @@
+
+model:
+  num_classes: 2
+
+data:
+  image_path: "../../datasets/stickman/g"
+  ext: 'png'
+  image_size: 32
+  num_channels: 1
+  train_split: 0.6
+  num_bits: 5
+
+train:
+  learning_rate: 0.1
+  momentum: 0.9
+  batch_size: 128
+  num_epochs: 25
