@@ -67,7 +67,7 @@ def get_train_dataset(image_path, image_size, num_channels,  num_bits, batch_siz
     train_ds = tf.data.Dataset.list_files(f"{image_path}/*.{ext}")
     if skip is not None:
         train_ds = train_ds.skip(skip)
-    train_ds = train_ds.shuffle(buffer_size=20000)
+    # train_ds = train_ds.shuffle(buffer_size=20000)
     train_ds = train_ds.map(partial(map_fn, size=image_size, num_channels=num_channels, num_bits=num_bits, training=True))
     train_ds = train_ds.batch(batch_size)
     train_ds = train_ds.repeat()
