@@ -33,9 +33,10 @@ def update_model(state, grads):
   return state.apply_gradients(grads=grads)
 
 
-def create_train_state(config, model, train_ds, rng):
+def create_train_state(config, model, trainloader, rng):
 
-  x, _ = next(train_ds)
+# ASK ROBERT: The actual datapoint doesn't matter here, right?
+  x, _ = next(iter(trainloader))
   """Creates initial `TrainState`."""
   params = model.init(rng, x)['params']
   tx = optax.sgd(config.train.learning_rate, config.train.momentum)
@@ -47,15 +48,13 @@ def get_class(z):
   y = 1*(z[0]+z[1]-2*z[2] > 0)
   return y
 
-def train_epoch(config, model, state, train_ds, rng):
+def train_epoch(config, model, state, trainloader, rng):
   """Train for a single epoch."""
 
   epoch_loss = []
   epoch_accuracy = []
 
-  for i in range(config.train.steps_per_epoch):
-
-    x, z = next(train_ds)
+  for x, z in trainloader:
     y = get_class(z)
 
     grads, loss, accuracy = apply_model(config, model, state, x, y)
@@ -71,8 +70,8 @@ def train_epoch(config, model, state, train_ds, rng):
 
 def train_and_evaluate(
                       model: nn.Module,
-                      train_ds,
-                      test_ds,
+                      trainloader,
+                      testloader,
                       config,
                       workdir: str) -> train_state.TrainState:
   """Execute model training and evaluation loop.
@@ -88,16 +87,26 @@ def train_and_evaluate(
   summary_writer.hparams(OmegaConf.to_container(config))
 
   rng, init_rng = jax.random.split(rng)
-  state = create_train_state(config, model, train_ds, init_rng)
+  state = create_train_state(config, model, trainloader, init_rng)
+
+  testloader_iterator = iter(testloader)
 
   for epoch in range(1, config.train.num_epochs + 1):
     rng, input_rng = jax.random.split(rng)
-    state, train_loss, train_accuracy = train_epoch(config, model, state, train_ds,
+    state, train_loss, train_accuracy = train_epoch(config, model, state, trainloader,
                                                     input_rng)
 
-    x, z = next(test_ds)
+
+  
+    try:
+      x,z = next(testloader_iterator)
+    except StopIteration:
+      testloader_iterator = iter(testloader)
+      x,z = next(testloader_iterator)
+
     y = get_class(z)
     _, test_loss, test_accuracy = apply_model(config, model, state, x, y)
+
 
     print(
         'epoch:% 3d, train_loss: %.4f, train_accuracy: %.2f, test_loss: %.4f, test_accuracy: %.2f'

@@ -10,6 +10,7 @@ import models
 from data import stickman
 
 from train import train_and_evaluate
+from dataloader import get_train_test_dataloader
 
 
 @hydra.main(config_path='configs',config_name='default')
@@ -23,9 +24,10 @@ def main(config: OmegaConf):
     logging.info('JAX local devices: %r', jax.local_devices())
 
     train_ds, test_ds = stickman.setup_data(config)
+    trainloader, testloader = get_train_test_dataloader(train_ds, test_ds, config)
     model = models.CNN(**config.model)
 
-    train_and_evaluate(model, train_ds, test_ds, config, workdir='../')
+    train_and_evaluate(model, trainloader, testloader, config, workdir='../')
 
 
 if __name__ == '__main__': 

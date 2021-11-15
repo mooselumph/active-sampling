@@ -4,15 +4,14 @@ services:
         runtime: nvidia
         user: root
         ports:
-          - "8888:8888"
+          - "8889:8888"
         volumes:
           - ${PWD}/projects:/home/jovyan/projects
-          - /home/raynor/datasets/:/home/jovyan/datasets
+          - /home/nishant/active_sampling/datasets/:/home/jovyan/datasets
         working_dir: /home/jovyan/projects
         environment: 
-            - NB_UID=1008 
-            - NB_GID=1008 
+            - NB_UID=1010
+            - NB_GID=1010
             - CHOWN_HOME=yes
             - CHOWN_HOME_OPTS=-R
-            - NVIDIA_VISIBLE_DEVICES=2,3
-        
+            - NVIDIA_VISIBLE_DEVICES=0,1

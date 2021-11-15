@@ -13,5 +13,8 @@ data:
 train:
   learning_rate: 0.1
   momentum: 0.9
-  batch_size: 1
+  batch_size: 100
   num_epochs: 25
+
+run:
+  deterministic: True

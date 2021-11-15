@@ -67,11 +67,12 @@ def get_train_dataset(image_path, image_size, num_channels,  num_bits, batch_siz
     train_ds = tf.data.Dataset.list_files(f"{image_path}/*.{ext}")
     if skip is not None:
         train_ds = train_ds.skip(skip)
-    # train_ds = train_ds.shuffle(buffer_size=20000)
+    train_ds = train_ds.shuffle(buffer_size=20000, reshuffle_each_iteration=False)
     train_ds = train_ds.map(partial(map_fn, size=image_size, num_channels=num_channels, num_bits=num_bits, training=True))
-    train_ds = train_ds.batch(batch_size)
-    train_ds = train_ds.repeat()
-    return iter(tfds.as_numpy(train_ds))
+    train_ds = list(train_ds.as_numpy_iterator())
+    x_train = np.stack([x[0] for x in train_ds])
+    y_train = np.stack([y[1] for y in train_ds])
+    return x_train, y_train
 
 
 def get_val_dataset(image_path, image_size, num_bits, batch_size, ext='jpg',
@@ -81,10 +82,10 @@ def get_val_dataset(image_path, image_size, num_bits, batch_size, ext='jpg',
     if take is not None:
         val_ds = val_ds.take(take)
     val_ds = val_ds.map(partial(map_fn, size=image_size, num_bits=num_bits, training=False))
-    val_ds = val_ds.batch(batch_size)
-    if repeat:
-        val_ds = val_ds.repeat()
-    return iter(tfds.as_numpy(val_ds))
+    val_ds = list(val_ds.as_numpy_iterator())
+    x_test = np.stack([x[0] for x in val_ds])
+    y_test = np.stack([y[1] for y in val_ds])
+    return x_test, y_test
 
 
 def setup_data(config: OmegaConf,show_grid=False):
@@ -103,7 +104,7 @@ def setup_data(config: OmegaConf,show_grid=False):
     print(f"{config.train.steps_per_epoch} training steps per epoch")
 
     #Train data
-    train_ds = get_train_dataset(**config.data, batch_size=config.train.batch_size, skip=train_split)
+    train_ds = get_train_dataset(**config.data, batch_size=config.train.batch_size, skip=(num_images - train_split))
 
     # Val data
     # During training we'll only evaluate on one batch of validation 
