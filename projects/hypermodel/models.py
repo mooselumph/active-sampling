@@ -18,8 +18,8 @@ class MLP(nn.Module):
 
 
 class DeepSet(nn.Module):
-    phi_features = [512, 20]
-    rho_features = [512, 20]
+    phi_features = [512, 512]
+    rho_features = [512, 100]
 
     @nn.compact
     def __call__(self, x):
@@ -34,6 +34,24 @@ class DeepSet(nn.Module):
             x = nn.Dense(feat, name=f'layers_{i + len(self.phi_features)}')(x)
             if i != len(self.rho_features) - 1:
                 x = nn.relu(x)
+        return x
+
+
+class HyperModel(nn.Module):
+    output_size = (101 * 512 + 512) + (512 * 1 + 1)
+
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Dense(self.output_size)(x)
+        return x
+
+
+class FullHyperModel(nn.Module):
+
+    @nn.compact
+    def __call__(self, x):
+        x = DeepSet()(x)
+        x = HyperModel()(x)
         return x
 
 
