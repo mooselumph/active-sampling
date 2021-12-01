@@ -12,10 +12,10 @@ from omegaconf import OmegaConf
 from hydra.utils import get_original_cwd, to_absolute_path
 import sys
 
-@hydra.main(config_path='configs',config_name='default')
+
+@hydra.main(config_path='configs', config_name='default')
 def main(config):
     run(config)
-    
 
 
 def run(config):
@@ -24,15 +24,14 @@ def run(config):
 
     if config.data.generate:
         key, new_key = jax.random.split(key)
-        x_train, y_train, x_draw, y_draw = gaussian_process(new_key, 
-            config.data.num_draw_points, config.data.num_train_points, config.data.xlims, sftf(config.data.length_scale))
+        x_train, y_train, x_draw, y_draw = gaussian_process(new_key,
+                                                            config.data.num_draw_points, config.data.num_train_points,
+                                                            config.data.xlims, sftf(config.data.length_scale))
         if config.data.save_file:
             save_data('datasets', config.data.save_file, x_train, y_train, x_draw, y_draw)
-    
+
     else:
         x_train, y_train, x_draw, y_draw = get_function_data(config.data.data_dir, config.data.file)
-        
-
 
     # Generate fourier features
     encoding_fun = jax.vmap(fourier_positional_encoding, (0, None, None, None), 0)
@@ -40,17 +39,18 @@ def run(config):
     x_train_encoded = encoding_fun(x_train, fourier.max_freq, fourier.num_bands, fourier.base)
 
     # Train MLP
-    num_train_points = int(len(x_train)/2)
-    trainloader, testloader = create_train_test_loaders(x_train_encoded[:num_train_points], y_train[:num_train_points], 
-                                train_split=config.train.train_split, batch_size=config.train.batch_size)
+    num_train_points = int(len(x_train) / 2)
+    trainloader, testloader = create_train_test_loaders(x_train_encoded[:num_train_points], y_train[:num_train_points],
+                                                        train_split=config.train.train_split,
+                                                        batch_size=config.train.batch_size)
     MLP.features = config.model.features
     key, new_key = jax.random.split(key)
     final_state1 = train_and_evaluate(new_key, config, MLP(), trainloader, testloader)
-    trainloader, testloader = create_train_test_loaders(x_train_encoded[num_train_points:], y_train[num_train_points:], 
-                                train_split=config.train.train_split, batch_size=config.train.batch_size)
+    trainloader, testloader = create_train_test_loaders(x_train_encoded[num_train_points:], y_train[num_train_points:],
+                                                        train_split=config.train.train_split,
+                                                        batch_size=config.train.batch_size)
     key, new_key = jax.random.split(key)
     final_state2 = train_and_evaluate(new_key, config, MLP(), trainloader, testloader)
-
 
     # Draw the "true" function
     plt.plot(x_draw, y_draw, label='True function')
@@ -65,12 +65,10 @@ def run(config):
     plt.savefig('figure.png')
 
 
-
-
 def save_data(save_dir, save_filename, x_train, y_train, x_draw, y_draw):
     save_dir = get_original_cwd() + '/{}'.format(save_dir)
     file_path = save_dir + '/{}'.format(save_filename)
-    
+
     with open(file_path, 'wb') as f:
         jnp.save(f, x_train)
         jnp.save(f, y_train)
@@ -89,7 +87,6 @@ def get_function_data(save_dir, save_filename):
         y_draw = jnp.load(f)
 
     return x_train, y_train, x_draw, y_draw
-
 
 
 if __name__ == '__main__':

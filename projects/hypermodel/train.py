@@ -24,13 +24,16 @@ def evaluate(model, state, xb, yb):
     loss = jnp.inner(diffs, diffs) / n
     return loss
 
+
 @jax.jit
 def l2_loss(x, alpha):
     return alpha * (x ** 2).mean()
 
+
 @partial(jax.jit, static_argnums=(0,))
 def train_step(model, state, xb, yb, alpha):
     """Train for a single step."""
+
     def loss_fn(params):
         y_pred = model.apply(params, xb).flatten()
         n, = y_pred.shape
@@ -38,10 +41,12 @@ def train_step(model, state, xb, yb, alpha):
         loss = jnp.inner(diffs, diffs) / n
         loss += sum([l2_loss(w, alpha=alpha) for w in jax.tree_leaves(params)])
         return loss
+
     grad_fn = jax.value_and_grad(loss_fn)
     loss, grads = grad_fn(state.params)
     state = state.apply_gradients(grads=grads)
     return state, loss
+
 
 def train_and_evaluate(key, config, model, trainloader, testloader):
     rng, init_rng = jax.random.split(key)
@@ -53,19 +58,15 @@ def train_and_evaluate(key, config, model, trainloader, testloader):
         for xb, yb in trainloader:
             state, batch_loss = train_step(model, state, xb.numpy(), yb.numpy(), config.train.alpha)
             train_loss += batch_loss
-        
+
         test_loss = 0.0
         for xb, yb in testloader:
             test_loss += evaluate(model, state, xb.numpy(), yb.numpy())
 
-
         if epoch % config.train.print_epoch == 0:
             print(
-            'epoch:% 3d, train_loss: %.4f, test_loss: %.4f'
-            % (epoch, train_loss, test_loss)
+                'epoch:% 3d, train_loss: %.4f, test_loss: %.4f'
+                % (epoch, train_loss, test_loss)
             )
 
     return state
-
-
-
